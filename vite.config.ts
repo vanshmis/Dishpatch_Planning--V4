@@ -66,7 +66,7 @@ function aistudioMediaPlugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    base: '/-Dishpatch_PlanningV3/',
+    base: '/Dishpatch_Planning--V4/',
     plugins: [react(), tailwindcss(), aistudioMediaPlugin()],
     resolve: {
       alias: {

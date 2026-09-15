@@ -27,7 +27,7 @@ export const ApprovePIModal: React.FC<ApprovePIModalProps> = ({
     if (!approverName || !department) return;
 
     // Update PI status or add approval remarks
-    dispatchService.updatePIStatus(pi.id, 'PLANNED');
+    dispatchService.updatePIStatus(pi.id, 'APPROVED');
 
     alert(`PI ${pi.piNumber} Approved successfully!\nApproved By: ${approverName}\nDepartment: ${department}`);
     onClose();

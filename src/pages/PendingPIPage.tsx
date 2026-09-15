@@ -38,6 +38,8 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
   const [divisionFilter, setDivisionFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [clientFilter, setClientFilter] = useState<string>('ALL');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const [selectedPIToApprove, setSelectedPIToApprove] = useState<ProformaInvoice | null>(null);
 
   useEffect(() => {
@@ -49,7 +51,12 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
     return () => unsub();
   }, []);
 
-  const filteredPIs = pis.filter((pi) => {
+  // First apply date filter to get accurate KPI numbers
+  const dateFilteredPIs = pis.filter((pi) => {
+    return (!dateFrom || pi.piDate >= dateFrom) && (!dateTo || pi.piDate <= dateTo);
+  });
+
+  const filteredPIs = dateFilteredPIs.filter((pi) => {
     const matchesStatus = statusFilter === 'ALL' || pi.status === statusFilter;
     const matchesPriority = priorityFilter === 'ALL' || pi.priority === priorityFilter;
     const matchesDivision = divisionFilter === 'ALL' || (pi.division || 'GT') === divisionFilter;
@@ -66,15 +73,11 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
   });
 
   const uniqueClients = Array.from(new Set(pis.map((p) => p.clientName)));
-  const pendingCount = pis.filter((p) => p.status === 'PENDING').length;
-  const draftCount = pis.filter((p) => p.status === 'DRAFT').length;
-
-  const totalPendingWeight = pis
-    .filter((p) => p.status === 'PENDING' || p.status === 'DRAFT')
-    .reduce((sum, p) => sum + p.totalWeightKg, 0);
-  const totalPendingValue = pis
-    .filter((p) => p.status === 'PENDING' || p.status === 'DRAFT')
-    .reduce((sum, p) => sum + p.totalAmount, 0);
+  
+  // KPI Calculations (based on date filter)
+  const totalOrders = dateFilteredPIs.filter((p) => p.status !== 'DRAFT').length;
+  const pendingOrders = dateFilteredPIs.filter((p) => p.status === 'PENDING').length;
+  const approvedPendingOrders = dateFilteredPIs.filter((p) => p.status === 'APPROVED').length;
 
   const handleExportCSV = () => {
     const headers = ['PI Number', 'Order No', 'Party Code', 'Client', 'Destination', 'Date', 'Expected Date', 'Weight (kg)', 'Amount (INR)', 'Status', 'Priority'];
@@ -103,7 +106,7 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Page Title */}
+      {/* Page Title & Top Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -111,7 +114,7 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
               Proforma Invoices & Orders Registry
             </h2>
             <span className="text-xs px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-200">
-              {pendingCount} Pending | {draftCount} Drafts
+              {pendingOrders} Pending | {approvedPendingOrders} Approved
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -119,7 +122,26 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 mr-2 shadow-xs">
+            <div className="flex items-center gap-1.5 px-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date</span>
+            </div>
+            <input 
+              type="date" 
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700 font-medium focus:ring-1 focus:ring-[#F4B400] outline-none" 
+            />
+            <span className="text-slate-400 text-xs">to</span>
+            <input 
+              type="date" 
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700 font-medium focus:ring-1 focus:ring-[#F4B400] outline-none" 
+            />
+          </div>
+
           <button
             onClick={handleExportCSV}
             className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 transition-colors"
@@ -137,48 +159,36 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
         </div>
       </div>
 
-      {/* Quick Summary Cards (Compact) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-        <div className="p-2.5 px-3 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-slate-500 uppercase font-bold text-[9px] tracking-wider block">
-              Pending Payload Backlog
-            </span>
-            <span className="text-sm font-extrabold text-slate-900 mt-0.5 block">
-              {totalPendingWeight.toLocaleString()} kg <span className="text-[10px] text-slate-500 font-normal">({(totalPendingWeight / 1000).toFixed(1)} MT)</span>
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0">
-            <Clock className="w-4 h-4" />
-          </div>
+      {/* Quick Summary Cards (Small Box Type) */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-xs">
+        <div className="col-span-1 sm:col-span-2 p-3 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col justify-center relative overflow-hidden">
+          <div className="absolute -right-2 -top-2 w-16 h-16 bg-slate-50 rounded-full opacity-50 pointer-events-none"></div>
+          <span className="text-slate-500 uppercase font-bold text-[9px] tracking-wider mb-1 z-10">
+            Total Orders
+          </span>
+          <span className="text-lg font-extrabold text-slate-900 z-10">
+            {totalOrders} <span className="text-[10px] text-slate-400 font-normal">Active</span>
+          </span>
         </div>
 
-        <div className="p-2.5 px-3 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-slate-500 uppercase font-bold text-[9px] tracking-wider block">
-              Pending Invoice Value
-            </span>
-            <span className="text-sm font-extrabold text-emerald-700 mt-0.5 block">
-              ₹{(totalPendingValue / 100000).toFixed(2)} Lakhs <span className="text-[10px] text-slate-500 font-normal">({pendingCount} Orders, {draftCount} Drafts)</span>
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-200">
-            ₹
-          </div>
+        <div className="col-span-1 sm:col-span-2 p-3 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col justify-center relative overflow-hidden border-l-4 border-l-amber-400">
+          <div className="absolute -right-2 -top-2 w-16 h-16 bg-amber-50 rounded-full opacity-50 pointer-events-none"></div>
+          <span className="text-slate-500 uppercase font-bold text-[9px] tracking-wider mb-1 z-10">
+            Pending Orders
+          </span>
+          <span className="text-lg font-extrabold text-amber-700 z-10">
+            {pendingOrders} <span className="text-[10px] text-amber-600/70 font-normal">Requires Approval</span>
+          </span>
         </div>
 
-        <div className="p-2.5 px-3 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-slate-500 uppercase font-bold text-[9px] tracking-wider block">
-              High Priority & Urgent Orders
-            </span>
-            <span className="text-sm font-extrabold text-rose-600 mt-0.5 block">
-              {pis.filter((p) => (p.status === 'PENDING' || p.status === 'DRAFT') && (p.priority === 'URGENT' || p.priority === 'HIGH')).length} Orders
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center font-bold shrink-0">
-            <AlertCircle className="w-4 h-4" />
-          </div>
+        <div className="col-span-1 sm:col-span-2 p-3 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col justify-center relative overflow-hidden border-l-4 border-l-emerald-500">
+          <div className="absolute -right-2 -top-2 w-16 h-16 bg-emerald-50 rounded-full opacity-50 pointer-events-none"></div>
+          <span className="text-slate-500 uppercase font-bold text-[9px] tracking-wider mb-1 z-10">
+            Approved Pending Orders
+          </span>
+          <span className="text-lg font-extrabold text-emerald-700 z-10">
+            {approvedPendingOrders} <span className="text-[10px] text-emerald-600/70 font-normal">Ready for Dispatch</span>
+          </span>
         </div>
       </div>
 
@@ -187,19 +197,19 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
         {/* Status Tab Filters */}
         <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
-            {['PENDING', 'DRAFT', 'ALL', 'PLANNED', 'DISPATCHED', 'DELIVERED'].map((st) => (
+            {['ALL', 'DRAFT', 'PENDING', 'APPROVED', 'PLANNED', 'DISPATCHED', 'DELIVERED'].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap ${
                   statusFilter === st
                     ? 'bg-[#181309] text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-200/60'
                 }`}
               >
-                {st === 'ALL' ? 'All Records' : st.replace(/_/g, ' ')}
-                {st === 'PENDING' && ` (${pendingCount})`}
-                {st === 'DRAFT' && ` (${draftCount})`}
+                {st === 'ALL' ? 'All Records' : st === 'APPROVED' ? 'Approved order pending' : st.replace(/_/g, ' ')}
+                {st === 'PENDING' && ` (${pendingOrders})`}
+                {st === 'APPROVED' && ` (${approvedPendingOrders})`}
               </button>
             ))}
           </div>
@@ -388,25 +398,25 @@ export const PendingPIPage: React.FC<PendingPIPageProps> = ({
                         )}
 
                         {pi.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => setSelectedPIToApprove(pi)}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[11px] flex items-center gap-1 shadow-2xs"
-                              title="Approve PI"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              <span>Approve</span>
-                            </button>
+                          <button
+                            onClick={() => setSelectedPIToApprove(pi)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[11px] flex items-center gap-1 shadow-2xs"
+                            title="Approve PI"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>Approve</span>
+                          </button>
+                        )}
 
-                            <button
-                              onClick={() => onOpenNewDispatch(pi.id)}
-                              className="px-2.5 py-1 bg-[#F4B400] hover:bg-[#e0a400] text-slate-950 font-bold rounded text-[11px] flex items-center gap-1 shadow-2xs"
-                              title="Plan Dispatch"
-                            >
-                              <Truck className="w-3.5 h-3.5" />
-                              <span>Plan</span>
-                            </button>
-                          </>
+                        {pi.status === 'APPROVED' && (
+                          <button
+                            onClick={() => onOpenNewDispatch(pi.id)}
+                            className="px-2.5 py-1 bg-[#F4B400] hover:bg-[#e0a400] text-slate-950 font-bold rounded text-[11px] flex items-center gap-1 shadow-2xs"
+                            title="Plan Dispatch"
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            <span>Plan</span>
+                          </button>
                         )}
                       </div>
                     </td>

@@ -58,7 +58,7 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
     if (isOpen) {
       const whList = dispatchService.getWarehouses();
       const vList = dispatchService.getVehicles();
-      const piList = dispatchService.getPendingPIs();
+      const piList = dispatchService.getApprovedPIs();
 
       setWarehouses(whList);
       setVehicles(vList);
@@ -156,9 +156,9 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold tracking-tight text-white">Create New Dispatch Plan</h3>
+              <h3 className="text-lg font-bold tracking-tight text-white">Create Loading Slip</h3>
               <p className="text-xs text-slate-400">
-                Map pending Proforma Invoices, assign vehicle, verify weight limits
+                Map approved Proforma Invoices, assign vehicle, verify weight limits
               </p>
             </div>
           </div>
@@ -351,10 +351,10 @@ export const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                2. Select Pending PIs for Consolidation ({selectedPiIds.length} Selected)
+                2. Select Approved PIs for Consolidation ({selectedPiIds.length} Selected)
               </label>
               <span className="text-xs text-slate-500">
-                {pendingPIs.length} pending orders available
+                {pendingPIs.length} approved orders available
               </span>
             </div>
 

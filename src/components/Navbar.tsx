@@ -115,7 +115,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="px-3.5 py-1.5 bg-[#F4B400] hover:bg-[#e0a400] text-slate-950 text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-all"
         >
           <Truck className="w-4 h-4" />
-          <span>Create Dispatch</span>
+          <span>Create Loading Slip</span>
         </button>
 
         {/* Notifications Popover */}

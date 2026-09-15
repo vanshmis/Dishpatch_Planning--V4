@@ -1,4 +1,4 @@
-export type PIStatus = 'PENDING' | 'PLANNED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED' | 'HOLD' | 'DRAFT';
+export type PIStatus = 'PENDING' | 'APPROVED' | 'PLANNED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED' | 'HOLD' | 'DRAFT';
 export type DispatchStatus = 'DRAFT' | 'READY_FOR_LOADING' | 'LOADING' | 'GATE_PASS_ISSUED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
 export type PriorityLevel = 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW';
 

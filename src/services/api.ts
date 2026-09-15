@@ -91,6 +91,10 @@ class DispatchDataService {
     return this.pis.filter((pi) => pi.status === 'PENDING');
   }
 
+  public getApprovedPIs(): ProformaInvoice[] {
+    return this.pis.filter((pi) => pi.status === 'APPROVED');
+  }
+
   public getPIById(id: string): ProformaInvoice | undefined {
     return this.pis.find((pi) => pi.id === id);
   }
