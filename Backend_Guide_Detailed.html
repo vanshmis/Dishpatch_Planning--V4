@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Integration Guide - Dispatch Planning ERP</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            background: #fff;
+        }
+        h1 { color: #0f172a; border-bottom: 3px solid #f4b400; padding-bottom: 10px; font-size: 28px; }
+        h2 { color: #1e293b; margin-top: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        h3 { color: #334155; margin-top: 25px; }
+        p { color: #475569; }
+        .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f8fafc; color: #0f172a; font-weight: bold; }
+        code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #b91c1c; }
+        pre { background: #0f172a; color: #f8fafc; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+        .file-tree { background: #f8fafc; padding: 15px; border-radius: 8px; font-family: monospace; border: 1px solid #e2e8f0; }
+        .page-break { page-break-before: always; }
+        @media print {
+            body { padding: 0; }
+            .page-break { page-break-before: always; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Backend Integration & Architecture Guide</h1>
+    <p><strong>Project:</strong> Dispatch Planning ERP (Frontend UI)</p>
+    <p><strong>Framework:</strong> React 19, TypeScript, Vite</p>
+    
+    <div class="alert">
+        <strong>Backend Developer Note:</strong> This frontend is fully functional using a local "Mock Database" (localStorage). Your primary job is to replace the synchronous `localStorage` logic with asynchronous API calls (e.g., `fetch` or `axios`). <strong>You do not need to rewrite or touch the UI components.</strong>
+    </div>
+
+    <h2>1. Complete File Directory & Purpose</h2>
+    <p>Below is the exact breakdown of every file in the <code>src/</code> directory so you understand the flow of data.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>File / Folder path</th>
+                <th>What it does (Purpose)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>src/main.tsx</code></td>
+                <td>Application entry point. Renders the React DOM.</td>
+            </tr>
+            <tr>
+                <td><code>src/App.tsx</code></td>
+                <td>Custom Hash-based Router. Controls which page component is displayed based on the URL.</td>
+            </tr>
+            <tr>
+                <td><code>src/types/index.ts</code></td>
+                <td><strong>CRITICAL:</strong> Contains all Data Models (TypeScript Interfaces). Backend JSON responses MUST match these exact keys (or be mapped to them).</td>
+            </tr>
+            <tr>
+                <td><code>src/services/api.ts</code></td>
+                <td><strong>THE INTEGRATION POINT:</strong> This is a singleton Pub/Sub service layer. The entire UI reads and writes data through this single file. Backend APIs will be called from here.</td>
+            </tr>
+            <tr>
+                <td><code>src/layouts/AppLayout.tsx</code></td>
+                <td>The main shell (Sidebar + Navbar). Also holds global Modals (like Create Dispatch) so they can be opened from anywhere.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Page Components (Screens)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>File</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>pages/DashboardPage.tsx</code></td>
+                <td>Analytics view. Shows counts of PIs, Dispatches, and Fleet status.</td>
+            </tr>
+            <tr>
+                <td><code>pages/PendingPIPage.tsx</code></td>
+                <td>"Proforma Invoices & Orders Registry". Displays all orders. Uses tabs (ALL, PENDING, APPROVED). Approvals happen here.</td>
+            </tr>
+            <tr>
+                <td><code>pages/TodaysPlanningPage.tsx</code></td>
+                <td>Live operations execution. Moves a Dispatch through stages: Ready -> Loading -> Gate Pass -> Transit -> Delivered.</td>
+            </tr>
+            <tr>
+                <td><code>pages/DispatchHistoryPage.tsx</code></td>
+                <td>Shows completed (Delivered/Cancelled) dispatch plans.</td>
+            </tr>
+            <tr>
+                <td><code>pages/SettingsPage.tsx</code></td>
+                <td>Master Data Management. Where you Add/Edit Vehicles, Drivers, Clients, and Warehouses.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2>2. Data Models (API Payload Expectations)</h2>
+    <p>Your Backend APIs must provide JSON data that maps to these interfaces defined in <code>src/types/index.ts</code>.</p>
+    
+    <h3>Proforma Invoice (Orders)</h3>
+    <pre>
+{
+  "id": "uuid",
+  "piNumber": "PI/2026/001",
+  "orderNumber": "ORD-9921",
+  "clientName": "Reliance Retail",
+  "status": "PENDING" | "APPROVED" | "PLANNED" | "DRAFT",
+  "totalWeightKg": 1500,
+  "totalAmount": 120500,
+  "items": [
+    { "itemCode": "SKU-1", "quantity": 100, "originalQuantity": 100, "rate": 50 }
+  ]
+}</pre>
+
+    <h3>Dispatch Plan (Loading Slips)</h3>
+    <pre>
+{
+  "id": "uuid",
+  "dispatchNumber": "DSP-2026-001",
+  "status": "READY_FOR_LOADING" | "LOADING" | "GATE_PASS_ISSUED" | "IN_TRANSIT",
+  "vehicleId": "v1",
+  "vehicleNumber": "MH-04-AB-1234",
+  "piIds": ["pi-id-1", "pi-id-2"],
+  "warehouseId": "wh-1"
+}</pre>
+
+    <h2>3. How to Integrate the APIs (Action Plan)</h2>
+    <p>All integrations happen inside <code>src/services/api.ts</code>.</p>
+
+    <h3>Step 1: Convert Synchronous getters to Asynchronous</h3>
+    <p>Currently, the UI asks for data instantly. When you connect APIs, fetching takes time. You will need to fetch data on load and store it in the <code>api.ts</code> class properties.</p>
+    
+    <pre>
+// Inside DispatchDataService (api.ts)
+
+// 1. Fetch data from backend
+public async initializeData() {
+    const res = await fetch('https://api.yourbackend.com/v1/orders');
+    this.pis = await res.json();
+    this.notifySubscribers(); // Tells React UI to re-render
+}
+
+// 2. Keep the synchronous getter for the UI
+public getApprovedPIs(): ProformaInvoice[] {
+    return this.pis.filter((pi) => pi.status === 'APPROVED');
+}</pre>
+
+    <h3>Step 2: Connect Mutations (POST / PUT)</h3>
+    <p>When the user clicks "Approve", the UI calls <code>dispatchService.updatePIStatus()</code>. Update this function to hit your backend.</p>
+
+    <pre>
+public async updatePIStatus(id: string, newStatus: PIStatus) {
+    // 1. Call Backend
+    await fetch(`https://api.yourbackend.com/v1/orders/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+    });
+
+    // 2. Update local state
+    const pi = this.pis.find(p => p.id === id);
+    if (pi) pi.status = newStatus;
+
+    // 3. Update UI instantly
+    this.notifySubscribers(); 
+}</pre>
+
+    <div class="alert">
+        <strong>Golden Rule:</strong> Whenever you change data via an API call, you <strong>MUST</strong> call <code>this.notifySubscribers()</code> at the end. This is what makes the Frontend UI update automatically without reloading the page.
+    </div>
+
+</body>
+</html>
